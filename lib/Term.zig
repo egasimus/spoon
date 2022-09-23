@@ -23,6 +23,8 @@ const os = std.os;
 const unicode = std.unicode;
 const debug = std.debug;
 
+const system = os.linux;
+
 const Attribute = @import("Attribute.zig");
 const spells = @import("spells.zig");
 const rpw = @import("restricted_padding_writer.zig");
@@ -95,8 +97,11 @@ pub fn uncook(self: *Self, config: AltScreenConfig) !void {
     // IEXTEN: Disable input preprocessing. This allows us to handle Ctrl-V,
     //         which would otherwise be intercepted by some terminals.
     raw.lflag &= ~@as(
-        os.system.tcflag_t,
-        os.system.ECHO | os.system.ICANON | os.system.ISIG | os.system.IEXTEN,
+        system.tcflag_t,
+        system.ECHO   |
+        system.ICANON |
+        system.ISIG   |
+        system.IEXTEN,
     );
 
     //   IXON: Disable software control flow. This allows us to handle Ctrl-S
@@ -110,22 +115,22 @@ pub fn uncook(self: *Self, config: AltScreenConfig) !void {
     // ISTRIP: Disable stripping the 8th bit of characters. Likely has no effect
     //         on anything remotely modern.
     raw.iflag &= ~@as(
-        os.system.tcflag_t,
-        os.system.IXON | os.system.ICRNL | os.system.BRKINT | os.system.INPCK | os.system.ISTRIP,
+        system.tcflag_t,
+        system.IXON | system.ICRNL | system.BRKINT | system.INPCK | system.ISTRIP,
     );
 
     // Disable output processing. Common output processing includes prefixing
     // newline with a carriage return.
-    raw.oflag &= ~@as(os.system.tcflag_t, os.system.OPOST);
+    raw.oflag &= ~@as(system.tcflag_t, system.OPOST);
 
     // Set the character size to 8 bits per byte. Likely has no efffect on
     // anything remotely modern.
-    raw.cflag |= os.system.CS8;
+    raw.cflag |= system.CS8;
 
     // With these settings, the read syscall will immediately return when it
     // can't get any bytes. This allows poll to drive our loop.
-    raw.cc[os.system.V.TIME] = 0;
-    raw.cc[os.system.V.MIN] = 0;
+    raw.cc[system.V.TIME] = 0;
+    raw.cc[system.V.MIN] = 0;
 
     try os.tcsetattr(self.tty.handle, .FLUSH, raw);
 
@@ -177,10 +182,10 @@ pub fn cook(self: *Self) !void {
 
 pub fn fetchSize(self: *Self) !void {
     if (self.cooked) return;
-    var size = mem.zeroes(os.system.winsize);
-    const err = os.system.ioctl(self.tty.handle, os.system.T.IOCGWINSZ, @ptrToInt(&size));
+    var size = mem.zeroes(system.winsize);
+    const err = system.ioctl(self.tty.handle, system.T.IOCGWINSZ, @ptrToInt(&size));
     if (os.errno(err) != .SUCCESS) {
-        return os.unexpectedErrno(@intToEnum(os.system.E, err));
+        return os.unexpectedErrno(@intToEnum(system.E, err));
     }
     self.height = size.ws_row;
     self.width = size.ws_col;
